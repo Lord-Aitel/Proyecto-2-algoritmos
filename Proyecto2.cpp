@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <fstream>
 
 using namespace std;
 
@@ -83,6 +84,10 @@ public:
 };
 
 int main() {
+
+    ifstream archivo("Cities.txt");
+    ifstream archivo("Guardians.txt");
+
     int V = 8; // Número de vértices
     UndirectedGraph myGraph(V);
 
