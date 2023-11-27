@@ -4,29 +4,32 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
+#include <unordered_map>
 
 using namespace std;
 
+class Ciudad;  // Declaración anticipada para resolver la dependencia circular
+class Guardian;  // Declaración anticipada para resolver la dependencia circular
+
 class Ciudad {
 public:
-
     string Nombre;
-    string Conexion;  
+    vector<string> Conexion;
+    vector<Guardian> guardianesLocales;
+    string Maestro;
 
-    Ciudad(string Nombre, string Conexion) {
+    Ciudad(string Nombre) {
         this->Nombre = Nombre;
-        this->Conexion = Conexion;
     }
 
     Ciudad() {
         this->Nombre = "";
-        this->Conexion = "";
     }
 };
 
-vector<Ciudad> ciudades;
+unordered_map<string, Ciudad> mapaCiudades;
 
-void cargar_ciudades(string archivo, vector<Ciudad>& ciudades) {
+void cargar_ciudades(string archivo, unordered_map<string, Ciudad>& mapaCiudades, vector<Ciudad>& vectorCiudades) {
     // Abre el archivo en modo lectura usando ifstream
     ifstream in(archivo);
 
@@ -52,56 +55,67 @@ void cargar_ciudades(string archivo, vector<Ciudad>& ciudades) {
         getline(ss, conexion, ',');
 
         // Crea un objeto Ciudad con los detalles de la ciudad
-        Ciudad ciudad(nombre, conexion);
+        Ciudad ciudad(nombre);
+        ciudad.Conexion.push_back(conexion);
 
-        // Agrega la ciudad a la lista de ciudades
-        ciudades.push_back(ciudad);
+        // Agrega la ciudad al unordered_map
+        mapaCiudades[nombre] = ciudad;
+
+        // Agrega la ciudad al vector de ciudades
+        vectorCiudades.push_back(ciudad);
 
         // Muestra la información de la ciudad
-        cout << "Nombre: " << ciudad.Nombre << ", Conexión: " << ciudad.Conexion << endl;
+        cout << "Nombre: " << ciudad.Nombre << endl;
+        cout << "Conexiones: " << endl;
+        for (const string& conexiones : ciudad.Conexion) {
+            cout << "- " << conexiones << endl;
+        }
     }
     // Cierra el archivo automáticamente cuando se sale del ámbito
 }
 
-class Guardián {
+class Guardian {
 public:
     string Nombre;
     int Poder;
     string Maestria;
     string Ciudad;
+    int powerLevel;  // Nuevo miembro powerLevel
 
-    Guardián(string Nombre, int Poder, string Maestria, string Ciudad) {
+    Guardian(string Nombre, int Poder, string Maestria, string Ciudad) {
         this->Nombre = Nombre;
         this->Poder = Poder;
         this->Maestria = Maestria;
         this->Ciudad = Ciudad;
+        this->powerLevel = Poder;  // Inicializar powerLevel con el mismo valor que Poder
     }
 
-    Guardián() {
+    Guardian() {
         this->Nombre = "";
         this->Poder = 0;
         this->Maestria = "";
         this->Ciudad = "";
+        this->powerLevel = 0;
     }
 };
 
-vector<Guardián> guardianes;
+vector<Guardian> guardianes;
 
 int buscar_guardian(string nombre) {
     for (size_t i = 0; i < guardianes.size(); ++i) {
         if (guardianes[i].Nombre == nombre) {
-            return static_cast<int>(i);  // Devuelve el índice del guardián encontrado
+            return i;  // Devuelve el índice del guardián encontrado
         }
     }
 
     return -1;  // Retorna -1 si el guardián no se encuentra
 }
 
-Guardián crear_guardian(string buffer) {
+Guardian crear_guardian(string buffer) {
     // Crear un stringstream para facilitar la extracción de datos de la cadena
     stringstream ss(buffer);
 
-    // Variables temporales para almacenar los datos del guardián
+    // Variables temporales para almacenar los datos del Guardian
     string nombre, maestria, ciudad;
     int poder;
 
@@ -112,12 +126,26 @@ Guardián crear_guardian(string buffer) {
     getline(ss, maestria, ',');
     getline(ss, ciudad, '\n');  // Cambiado para leer hasta el final de la línea
 
-    // Crear y devolver un nuevo objeto Guardián con los datos obtenidos
-    Guardián guardián(nombre, poder, maestria, ciudad);
-    return guardián;
+    // Crear y devolver un nuevo objeto Guardian con los datos obtenidos
+    Guardian guardian(nombre, poder, maestria, ciudad);
+    return guardian;
 }
 
-void cargar_guardianes(string archivo, vector<Guardián>& guardianes) {
+bool compararPowerLevel(const Guardian& a, const Guardian& b) {
+    return a.powerLevel > b.powerLevel;
+}
+
+int guardianIndex(const vector<Guardian>& guardianes, const string& nombre) {
+    for (size_t i = 0; i < guardianes.size(); ++i) {
+        if (guardianes[i].Nombre == nombre) {
+            return i;  // Devuelve el índice del guardián encontrado
+        }
+    }
+
+    return -1;  // Retorna -1 si el guardián no se encuentra
+}
+
+void cargar_guardianes(string archivo, vector<Guardian>& guardianes) {
     // Abre el archivo en modo lectura usando ifstream
     ifstream in(archivo);
 
@@ -133,23 +161,37 @@ void cargar_guardianes(string archivo, vector<Guardián>& guardianes) {
     // Lee los guardianes uno por uno del archivo
     while (getline(in, buffer)) {
         // Crea un objeto Guardián con los detalles del guardián
-        Guardián guardián = crear_guardian(buffer);
+        Guardian guardian = crear_guardian(buffer);
 
         // Agrega el guardián a la lista de guardianes
-        guardianes.push_back(guardián);
+        guardianes.push_back(guardian);
+
+        if(mapaCiudades.find(guardian.Ciudad) != mapaCiudades.end())
+        {
+            Ciudad& ciudad = mapaCiudades[guardian.Ciudad];
+            if (ciudad.Maestro.empty() || guardian.Poder > guardianes[guardianIndex(guardianes, ciudad.Maestro)].Poder) 
+            {
+                ciudad.Maestro = guardian.Nombre;
+            }
+
+        ciudad.guardianesLocales.push_back(guardian);
+        // Ordenar a los aprendices según su Poder
+        sort(ciudad.guardianesLocales.begin(), ciudad.guardianesLocales.end(), compararPowerLevel);
+
+        }
 
         // Muestra la información completa del guardián
-        cout << "Nombre: " << guardián.Nombre << endl;
-        cout << "Poder: " << guardián.Poder << endl;
-        cout << "Maestria: " << guardián.Maestria << endl;
-        cout << "Ciudad: " << guardián.Ciudad << endl;
+        cout << "Nombre: " << guardian.Nombre << endl;
+        cout << "Poder: " << guardian.Poder << endl;
+        cout << "Maestria: " << guardian.Maestria << endl;
+        cout << "Ciudad: " << guardian.Ciudad << endl;
         cout << "----------------------" << endl;
     }
 
     // Cierra el archivo automáticamente cuando se sale del ámbito
 }
 
-void enfrentar(int guardián1_id, int guardián2_id) {
+void enfrentar(int guardian1_id, int guardian2_id) {
     // Simular la batalla y actualizar la puntuación de los guardiánes
 }
 
@@ -159,9 +201,10 @@ void actualizar_ranking() {
 
 int buscar_maestro(int id) {
     // Buscar al maestro de un guardián
+    return 0;
 }
 
-void mostrar_información(Guardián guardián) {
+void mostrar_información(Guardian guardian) {
     // Imprimir la información del guardián
 }
 
@@ -173,7 +216,8 @@ void ver_ranking() {
     // Imprimir el ranking de los guardiánes
 }
 
-double calcular_probabilidad(Guardián guardián1, Guardián guardián2) {
+double calcular_probabilidad(Guardian guardian1, Guardian guardian2) {
+    return 0;
     // Calcular la probabilidad de que el primer guardián gane la batalla
 }
 
@@ -184,6 +228,8 @@ int main() {
 
    int opcion;
 
+   vector<Ciudad> ciudadesVector; 
+   unordered_map<string, Ciudad> ciudadesMap;
    do {
         cout << "   ----The guardians battles----" << endl;
         cout << "/[1]  Ver la lista de candidatos \\" << endl;
@@ -200,22 +246,25 @@ int main() {
                break;
            }
            case 2: {
-               string nombre;
-               cout << "Ingrese el nombre del guardian: ";
-               cin >> nombre;
+                string nombre;
+                cout << "Ingrese el nombre del guardián: ";
+                cin >> nombre;
 
-               int guardián_id = buscar_guardian(nombre);
+                int guardian_id = buscar_guardian(nombre);
+                if (guardian_id != -1) {
+                    // Mostrar la información del guardián
+                    cout << "Nombre: " << guardianes[guardian_id].Nombre << endl;
+                    cout << "Poder: " << guardianes[guardian_id].Poder << endl;
+                    cout << "Maestría: " << guardianes[guardian_id].Maestria << endl;
+                    cout << "Ciudad: " << guardianes[guardian_id].Ciudad << endl;
+                } else {
+                    cout << "Guardián no encontrado." << endl;
+                }
 
-               if (guardián_id != -1) {
-                   // Imprimir la información del guardián
-               } else {
-                   cout << "Guardian no encontrado." << endl;
-               }
-
-               break;
-           }
+                break;
+            }
            case 3: {
-               cargar_ciudades(archivo_ciudades, ciudades);
+               cargar_ciudades(archivo_ciudades, mapaCiudades, ciudadesVector);
                break;
            }
            case 4: {
@@ -224,11 +273,11 @@ int main() {
                cin >> nombre1;
                cout << "Ingrese el nombre del segundo guardian: ";
                cin >> nombre2;
-               int guardián1_id = buscar_guardian(nombre1);
-               int guardián2_id = buscar_guardian(nombre2);
+               int guardian1_id = buscar_guardian(nombre1);
+               int guardian2_id = buscar_guardian(nombre2);
 
-               if (guardián1_id != -1 && guardián2_id != -1) {
-                   enfrentar(guardián1_id, guardián2_id);
+               if (guardian1_id != -1 && guardian2_id != -1 && guardian1_id != guardian2_id) {
+                   enfrentar(guardian1_id, guardian2_id);
                } else {
                    cout << "Guardian no encontrado." << endl;
                }
