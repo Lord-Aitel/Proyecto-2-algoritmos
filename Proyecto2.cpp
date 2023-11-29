@@ -29,53 +29,6 @@ public:
     }
 };
 
-unordered_map<string, Ciudad> mapaCiudades;
-
-void cargar_ciudades(string archivo, unordered_map<string, Ciudad>& mapaCiudades, vector<Ciudad>& vectorCiudades) {
-    // Abre el archivo en modo lectura usando ifstream
-    ifstream in(archivo);
-
-    // Comprueba si el archivo se pudo abrir correctamente
-    if (!in.is_open()) {
-        cout << "No se pudo abrir el archivo: " << archivo << endl;
-        return;
-    }
-
-    // Crea un buffer para guardar los datos de cada ciudad
-    string buffer;
-
-    // Lee las ciudades una por una del archivo
-    while (getline(in, buffer)) {
-        // Crear un stringstream para facilitar la extracción de datos de la cadena
-        stringstream ss(buffer);
-
-        // Variables temporales para almacenar los datos de la ciudad
-        string nombre, conexion;
-
-        // Leer los datos desde el stringstream
-        getline(ss, nombre, ',');
-        getline(ss, conexion, ',');
-
-        // Crea un objeto Ciudad con los detalles de la ciudad
-        Ciudad ciudad(nombre);
-        ciudad.Conexion.push_back(conexion);
-
-        // Agrega la ciudad al unordered_map
-        mapaCiudades[nombre] = ciudad;
-
-        // Agrega la ciudad al vector de ciudades
-        vectorCiudades.push_back(ciudad);
-
-        // Muestra la información de la ciudad
-        cout << "Nombre: " << ciudad.Nombre << endl;
-        cout << "Conexiones: " << endl;
-        for (const string& conexiones : ciudad.Conexion) {
-            cout << "- " << conexiones << endl;
-        }
-    }
-    // Cierra el archivo automáticamente cuando se sale del ámbito
-}
-
 class Guardian {
 public:
     string Nombre;
@@ -100,6 +53,65 @@ public:
         this->powerLevel = 0;
     }
 };
+
+unordered_map<string, Ciudad> mapaCiudades;
+
+void cargar_ciudades(string archivo, unordered_map<string, Ciudad>& mapaCiudades, vector<Guardian>& guardianes) {
+    ifstream in(archivo);
+
+    if (!in.is_open()) {
+        cout << "No se pudo abrir el archivo: " << archivo << endl;
+        return;
+    }
+
+    string buffer;
+
+    while (getline(in, buffer)) {
+        stringstream ss(buffer);
+        string nombre, conexion;
+
+        getline(ss, nombre, ',');
+        getline(ss, conexion, ',');
+
+        // Verificar si la ciudad ya existe en el mapa
+        if (mapaCiudades.find(nombre) == mapaCiudades.end()) {
+            Ciudad ciudad(nombre);
+            ciudad.Conexion.push_back(conexion);
+
+            // Agregar guardianes locales a la ciudad
+            for (const Guardian& guardian : guardianes) {
+                if (guardian.Ciudad == nombre) {
+                    ciudad.guardianesLocales.push_back(guardian);
+                }
+            }
+
+            mapaCiudades[nombre] = ciudad;
+        } else {
+            // La ciudad ya existe, solo agregar la conexión
+            mapaCiudades[nombre].Conexion.push_back(conexion);
+
+        }
+    }
+    in.close();
+}
+
+
+
+void imprimir_ciudades(const unordered_map<string, Ciudad>& mapaCiudades) {
+    for (const auto& par : mapaCiudades) {
+        const Ciudad& ciudad = par.second;
+        cout << "Nombre: " << ciudad.Nombre << endl;
+        cout << "Conexiones:" << endl;
+        for (const string& conexion : ciudad.Conexion) {
+            cout << "- " << conexion << endl;
+        }
+        cout << "------------" << endl;
+    }
+}
+
+
+
+
 
 vector<Guardian> guardianes;
 
@@ -133,7 +145,7 @@ Guardian crear_guardian(string buffer) {
     return guardian;
 }
 
-bool compararPowerLevel(const Guardian& a, const Guardian& b) {
+bool compararPoder(const Guardian& a, const Guardian& b) {
     return a.powerLevel > b.powerLevel;
 }
 
@@ -178,7 +190,7 @@ void cargar_guardianes(string archivo, vector<Guardian>& guardianes) {
 
         ciudad.guardianesLocales.push_back(guardian);
         // Ordenar a los aprendices según su Poder
-        sort(ciudad.guardianesLocales.begin(), ciudad.guardianesLocales.end(), compararPowerLevel);
+        sort(ciudad.guardianesLocales.begin(), ciudad.guardianesLocales.end(), compararPoder);
 
         }
 
@@ -193,9 +205,30 @@ void cargar_guardianes(string archivo, vector<Guardian>& guardianes) {
     // Cierra el archivo automáticamente cuando se sale del ámbito
 }
 
+void imprimir_candidatos(const vector<Guardian>& guardianes) {
+    cout << "Lista de candidatos:" << endl;
+    bool hay_candidatos = false;
+
+    for (const Guardian& guardian : guardianes) {
+        if (guardian.Poder >= 90 && guardian.Poder <= 99) {
+            hay_candidatos = true;
+            cout << "Nombre: " << guardian.Nombre << endl;
+            cout << "Poder: " << guardian.Poder << endl;
+            cout << "Maestría: " << guardian.Maestria << endl;
+            cout << "Ciudad: " << guardian.Ciudad << endl;
+            cout << "----------------------" << endl;
+        }
+    }
+
+    if (!hay_candidatos) {
+        cout << "No hay guardianes candidatos en este momento." << endl;
+    }
+}
+
+
 void actualizar_ranking() {
     // Ordenar la lista de guardianes según su poder
-    sort(guardianes.begin(), guardianes.end(), compararPowerLevel);
+    sort(guardianes.begin(), guardianes.end(), compararPoder);
 
     // Mostrar el nuevo ranking
     cout << "----- Ranking de Guardianes -----" << endl;
@@ -233,7 +266,27 @@ void mostrar_informacion(const Guardian& guardian) {
     cout << "---------------------------------" << endl;
 }
 
-void enfrentar(int guardian1_id, string ciudad_destino) {
+void mostrar_ciudades_conexion(const string& ciudad_actual, const unordered_map<string, Ciudad>& mapaCiudades) {
+    if (mapaCiudades.find(ciudad_actual) == mapaCiudades.end()) {
+        cout << "La ciudad actual no se encuentra en el mapa." << endl;
+        return;
+    }
+
+    const Ciudad& ciudad_actual_obj = mapaCiudades.at(ciudad_actual);
+
+    if (ciudad_actual_obj.Conexion.empty()) {
+        cout << "No hay ciudades conectadas desde " << ciudad_actual << "." << endl;
+        return;
+    }
+
+    cout << "Ciudades a las que puedes viajar desde " << ciudad_actual << ":" << endl;
+    for (const string& conexion : ciudad_actual_obj.Conexion) {
+        cout << "- " << conexion << endl;
+    }
+}
+
+
+void enfrentar(int guardian1_id) {
     // Verificar que el ID del guardián sea válido
     if (guardian1_id < 0 || guardian1_id >= guardianes.size()) {
         cout << "ID de guardián no válido." << endl;
@@ -241,16 +294,28 @@ void enfrentar(int guardian1_id, string ciudad_destino) {
     }
 
     Guardian& guardian1 = guardianes[guardian1_id];
+    Ciudad ciudad;
+
+    if(mapaCiudades.find(guardian1.Ciudad) == mapaCiudades.end())
+    {
+        ciudad = mapaCiudades[guardian1.Ciudad];
+    }
 
     // Verificar que el guardián no sea el gran maestro o un guardián del reino
-    if (guardian1.Nombre == "Gran Maestro" || guardian1.Nombre == mapaCiudades[ciudad_destino].Maestro) {
+    if (guardian1.Nombre == "Freya" || guardian1.Nombre == ciudad.Maestro) {
         cout << "No puedes seleccionar al Gran Maestro o a los guardianes del reino." << endl;
         return;
     }
 
+    mostrar_ciudades_conexion(guardian1.Ciudad, mapaCiudades);
+
+    string ciudad_destino;
+    getline(cin, ciudad_destino);
+
+    cout << ciudad_destino << endl;
     // Viajar a la ciudad de destino
     if (mapaCiudades.find(ciudad_destino) == mapaCiudades.end()) {
-        cout << "Ciudad de destino no válida." << endl;
+        cout << "Ciudad de destino no valida." << endl;
         return;
     }
 
@@ -259,23 +324,25 @@ void enfrentar(int guardian1_id, string ciudad_destino) {
     // Obtener la lista de guardianes locales en la ciudad de destino
     vector<Guardian>& guardianes_locales = ciudad_destino_obj.guardianesLocales;
 
-    // Filtrar guardianes locales que no son el Gran Maestro ni los guardianes del reino
-    vector<Guardian> guardianes_filtrados;
-    for (const Guardian& guardian : guardianes_locales) {
-        if (guardian.Nombre != "Gran Maestro" && guardian.Nombre != ciudad_destino_obj.Maestro) {
-            guardianes_filtrados.push_back(guardian);
+    for(const Guardian guardian : guardianes_locales)
+    {
+        mostrar_informacion(guardian);
+    }
+
+    cout << "Seleccione Rival." << endl;
+    string guardianRival;
+    Guardian guardian2;
+
+    getline(cin, guardianRival);
+
+    for(const Guardian guardian : guardianes_locales)
+    {
+        if(guardian.Nombre == guardianRival)
+        {
+            guardian2 = guardian;
+            break;
         }
     }
-
-    // Seleccionar un guardián local aleatorio como oponente
-    if (guardianes_filtrados.empty()) {
-        cout << "No hay guardianes locales en esta ciudad." << endl;
-        return;
-    }
-
-    int guardian2_index = rand() % guardianes_filtrados.size();
-    Guardian& guardian2 = guardianes_filtrados[guardian2_index];
-
 
     // Calcular la probabilidad de que el primer guardián gane la batalla
     double probabilidad = calcular_probabilidad(guardian1, guardian2);
@@ -371,7 +438,7 @@ void ver_ranking(const vector<Guardian>& guardianes) {
     vector<Guardian> guardianesOrdenados = guardianes;
 
     // Ordenar el vector de guardianes por nivel de poder
-    sort(guardianesOrdenados.begin(), guardianesOrdenados.end(), compararPowerLevel);
+    sort(guardianesOrdenados.begin(), guardianesOrdenados.end(), compararPoder);
 
     // Imprimir el encabezado del ranking
     cout << "   ---- Ranking de Guardianes ----" << endl;
@@ -391,12 +458,14 @@ void ver_ranking(const vector<Guardian>& guardianes) {
 int main() {
    string archivo = "Guardians.txt";
    string archivo_ciudades = "Cities.txt";
+   vector<Ciudad> ciudadesVector; 
+
    //cargar_informacion(archivo);
+   // Cargar al inicio para evitar errores
+    cargar_guardianes(archivo, guardianes);
+    cargar_ciudades(archivo_ciudades, mapaCiudades, guardianes);
 
    int opcion;
-
-   vector<Ciudad> ciudadesVector; 
-   unordered_map<string, Ciudad> ciudadesMap;
    do {
         cout << "   ----The guardians battles----" << endl;
         cout << "/[1]  Ver la lista de candidatos \\" << endl;
@@ -406,16 +475,17 @@ int main() {
         cout << "/[5]          Para Salir         \\" << endl;
         cout << "Seleccione una opcion: ";
         cin >> opcion;
+        cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
        switch (opcion) {
            case 1: {
-               cargar_guardianes(archivo, guardianes);
+               imprimir_candidatos(guardianes);
                break;
            }
            case 2: {
                 string nombre;
                 cout << "Ingrese el nombre del guardián: ";
-                cin >> nombre;
+                getline(cin, nombre);
 
                 int guardian_id = buscar_guardian(nombre);
                 if (guardian_id != -1) {
@@ -431,29 +501,26 @@ int main() {
                 break;
             }
            case 3: {
-               cargar_ciudades(archivo_ciudades, mapaCiudades, ciudadesVector);
-               break;
+                imprimir_ciudades(mapaCiudades);
+                break;
            }
            case 4: {
-               string nombre1, nombre2;
-               cout << "Ingrese el nombre del primer guardian: ";
-               cin >> nombre1;
-               int guardian1_id = buscar_guardian(nombre1);
-               string ciudad_destino;
-               cout << "Ingrese el nombre de la ciudad de destino: ";
-               cin >> ciudad_destino;
+                string nombre1;
+                cout << "Seleccione a un guardian: ";
+                getline(cin, nombre1);
+                int guardian1_id = buscar_guardian(nombre1);
 
-                enfrentar(guardian1_id, ciudad_destino);
+                enfrentar(guardian1_id);
 
-               break;
+                break;
            }
            case 5: {
-               // Salir del programa
-               break;
+                // Salir del programa
+                break;
            }
            default: {
-               cout << "Opción no válida." << endl;
-               break;
+                cout << "Opción no válida." << endl;
+                break;
            }
        }
    } while (opcion != 5);
