@@ -42,7 +42,6 @@ public:
         this->Poder = Poder;
         this->Maestria = Maestria;
         this->Ciudad = Ciudad;
-        this->powerLevel = Poder;  // Inicializar powerLevel con el mismo valor que Poder
     }
 
     Guardian() {
@@ -50,7 +49,6 @@ public:
         this->Poder = 0;
         this->Maestria = "";
         this->Ciudad = "";
-        this->powerLevel = 0;
     }
 };
 
@@ -146,7 +144,7 @@ Guardian crear_guardian(string buffer) {
 }
 
 bool compararPoder(const Guardian& a, const Guardian& b) {
-    return a.powerLevel > b.powerLevel;
+    return a.Poder > b.Poder;
 }
 
 int guardianIndex(const vector<Guardian>& guardianes, const string& nombre) {
@@ -226,17 +224,27 @@ void imprimir_candidatos(const vector<Guardian>& guardianes) {
 }
 
 
-void actualizar_ranking() {
+int actualizar_ranking(Guardian& miGuardian) {
+    int poderGuardian = miGuardian.Poder;
+    int nuevaPosicion = -1; // Variable para almacenar la nueva posición del guardián
+
     // Ordenar la lista de guardianes según su poder
     sort(guardianes.begin(), guardianes.end(), compararPoder);
 
-    // Mostrar el nuevo ranking
-    cout << "----- Ranking de Guardianes -----" << endl;
+    // Buscar la nueva posición del guardián en el vector ordenado
     for (size_t i = 0; i < guardianes.size(); ++i) {
-        cout << i + 1 << ". " << guardianes[i].Nombre << " - Poder: " << guardianes[i].Poder << endl;
+        if (guardianes[i].Nombre == miGuardian.Nombre && guardianes[i].Poder == poderGuardian) {
+            // Almacenar la nueva posición del guardián
+            nuevaPosicion = i;
+            break;
+        }
     }
-    cout << "---------------------------------" << endl;
+
+    return nuevaPosicion; // Devolver la nueva posición del guardián
 }
+
+
+
 
 double calcular_probabilidad(const Guardian& guardian1, const Guardian& guardian2) {
     // Calcular la probabilidad basada en la diferencia de poder entre los guardianes
@@ -295,8 +303,8 @@ void enfrentar(int guardian1_id) {
 
     Guardian& guardian1 = guardianes[guardian1_id];
     Ciudad ciudad;
-
-    if(mapaCiudades.find(guardian1.Ciudad) == mapaCiudades.end())
+    ciudad.Nombre =  guardian1.Ciudad;
+    if(mapaCiudades.find(ciudad.Nombre) == mapaCiudades.end())
     {
         ciudad = mapaCiudades[guardian1.Ciudad];
     }
@@ -307,89 +315,93 @@ void enfrentar(int guardian1_id) {
         return;
     }
 
-    mostrar_ciudades_conexion(guardian1.Ciudad, mapaCiudades);
-
-    string ciudad_destino;
-    getline(cin, ciudad_destino);
-
-    cout << ciudad_destino << endl;
-    // Viajar a la ciudad de destino
-    if (mapaCiudades.find(ciudad_destino) == mapaCiudades.end()) {
-        cout << "Ciudad de destino no valida." << endl;
-        return;
-    }
-
-    Ciudad& ciudad_destino_obj = mapaCiudades[ciudad_destino];
-
-    // Obtener la lista de guardianes locales en la ciudad de destino
-    vector<Guardian>& guardianes_locales = ciudad_destino_obj.guardianesLocales;
-
-    for(const Guardian guardian : guardianes_locales)
+    do
     {
-        mostrar_informacion(guardian);
-    }
+        mostrar_ciudades_conexion(ciudad.Nombre, mapaCiudades);
 
-    cout << "Seleccione Rival." << endl;
-    string guardianRival;
-    Guardian guardian2;
+        cout << guardian1.Nombre << endl;
 
-    getline(cin, guardianRival);
+        string ciudad_destino;
+        getline(cin, ciudad_destino);
 
-    for(const Guardian guardian : guardianes_locales)
-    {
-        if(guardian.Nombre == guardianRival)
+        // Viajar a la ciudad de destino
+        if (mapaCiudades.find(ciudad_destino) == mapaCiudades.end()) {
+            cout << "Ciudad de destino no válida." << endl;
+            return;
+        }
+
+        Ciudad& ciudad_destino_obj = mapaCiudades[ciudad_destino];
+
+        // Obtener la lista de guardianes locales en la ciudad de destino
+        vector<Guardian>& guardianes_locales = ciudad_destino_obj.guardianesLocales;
+
+        for(const Guardian guardian : guardianes_locales)
         {
-            guardian2 = guardian;
-            break;
+            mostrar_informacion(guardian);
         }
-    }
 
-    // Calcular la probabilidad de que el primer guardián gane la batalla
-    double probabilidad = calcular_probabilidad(guardian1, guardian2);
+        cout << "Seleccione Rival." << endl;
+        string guardianRival;
+        Guardian guardian2;
 
-    // Generar un número aleatorio entre 0 y 1
-    double random = ((double)rand() / RAND_MAX);
+        getline(cin, guardianRival);
 
-    // Determinar el resultado de la batalla
-    if (random < probabilidad) {
-        cout << guardian1.Nombre << " ha ganado la batalla contra " << guardian2.Nombre << " en " << ciudad_destino << "!" << endl;
-        // Actualizar el puntaje según el tipo de guardián derrotado
-        if (guardian2.Nombre == ciudad_destino_obj.Maestro) {
-            guardian1.Poder += 5;
+        for(const Guardian guardian : guardianes_locales)
+        {
+            if(guardian.Nombre == guardianRival)
+            {
+                guardian2 = guardian;
+                break;
+            }
+        }
+
+        // Calcular la probabilidad de que el primer guardián gane la batalla
+        double probabilidad = calcular_probabilidad(guardian1, guardian2);
+
+        // Generar un número aleatorio entre 0 y 1
+        double random = ((double)rand() / RAND_MAX);
+
+        // Determinar el resultado de la batalla
+        if (random < probabilidad) {
+            cout << guardian1.Nombre << " ha ganado la batalla contra " << guardian2.Nombre << " en " << ciudad_destino << "!" << endl;
+            // Actualizar el puntaje según el tipo de guardián derrotado
+            if (guardian2.Nombre == ciudad_destino_obj.Maestro) {
+                guardian1.Poder += 5;
+            } else {
+                guardian1.Poder += 3;
+            }
+
+            // Mostrar información actualizada del ganador
+            mostrar_informacion(guardian1);
+
+            // Bajar el puntaje al guardián derrotado
+            guardian2.Poder -= 1;
+
+
+            // Verificar si el guardián retador supera al maestro
+            if (guardian1.Poder > guardianes[guardianIndex(guardianes, ciudad_destino_obj.Maestro)].Poder) {
+                ciudad_destino_obj.Maestro = guardian1.Nombre;
+            }
         } else {
-            guardian1.Poder += 3;
+            cout << guardian2.Nombre << " ha ganado la batalla contra " << guardian1.Nombre << " en " << ciudad_destino << "!" << endl;
+            // Bajar el puntaje al guardián retador
+            guardian1.Poder -= 1;
+
+            // Bajar el puntaje al guardián derrotado
+            guardian2.Poder += 1;
+
+            // Mostrar información actualizada del perdedor
+            mostrar_informacion(guardian1);
+
+            // Mostrar información actualizada del ganador
+            mostrar_informacion(guardian2);
+
+            
         }
-
-        // Mostrar información actualizada del ganador
-        mostrar_informacion(guardian1);
-
-        // Bajar el puntaje al guardián derrotado
-        guardian2.Poder -= 1;
-
-        // Actualizar el ranking después de la batalla
-        actualizar_ranking();
-
-        // Verificar si el guardián retador supera al maestro
-        if (guardian1.Poder > guardianes[guardianIndex(guardianes, ciudad_destino_obj.Maestro)].Poder) {
-            ciudad_destino_obj.Maestro = guardian1.Nombre;
-        }
-    } else {
-        cout << guardian2.Nombre << " ha ganado la batalla contra " << guardian1.Nombre << " en " << ciudad_destino << "!" << endl;
-        // Bajar el puntaje al guardián retador
-        guardian1.Poder -= 1;
-
-        // Bajar el puntaje al guardián derrotado
-        guardian2.Poder += 1;
-
-        // Mostrar información actualizada del perdedor
-        mostrar_informacion(guardian1);
-
-        // Mostrar información actualizada del ganador
-        mostrar_informacion(guardian2);
-
-        // Actualizar el ranking después de la batalla
-        actualizar_ranking();
-    }
+        guardian1_id = actualizar_ranking(guardian1);
+        guardian1 = guardianes[guardian1_id];
+        ciudad = ciudad_destino_obj;
+    } while (guardian1.Poder < 90);
 }
 
 int buscar_maestro(const string& nombre) {
