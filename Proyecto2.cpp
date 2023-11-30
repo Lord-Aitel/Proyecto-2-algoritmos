@@ -226,6 +226,7 @@ void imprimir_candidatos(const vector<Guardian>& guardianes) {
 
 int actualizar_ranking(Guardian& miGuardian) {
     int poderGuardian = miGuardian.Poder;
+    string nombreGuardian = miGuardian.Nombre;
     int nuevaPosicion = -1; // Variable para almacenar la nueva posición del guardián
 
     // Ordenar la lista de guardianes según su poder
@@ -233,7 +234,7 @@ int actualizar_ranking(Guardian& miGuardian) {
 
     // Buscar la nueva posición del guardián en el vector ordenado
     for (size_t i = 0; i < guardianes.size(); ++i) {
-        if (guardianes[i].Nombre == miGuardian.Nombre && guardianes[i].Poder == poderGuardian) {
+        if (guardianes[i].Nombre == nombreGuardian && guardianes[i].Poder == poderGuardian) {
             // Almacenar la nueva posición del guardián
             nuevaPosicion = i;
             break;
@@ -319,18 +320,20 @@ void enfrentar(int guardian1_id) {
     {
         mostrar_ciudades_conexion(ciudad.Nombre, mapaCiudades);
 
-        cout << guardian1.Nombre << endl;
-
         string ciudad_destino;
         getline(cin, ciudad_destino);
 
-        // Viajar a la ciudad de destino
+        Ciudad& ciudad_destino_obj = mapaCiudades[ciudad_destino];
+
+        // Check if the city exists in the map
         if (mapaCiudades.find(ciudad_destino) == mapaCiudades.end()) {
-            cout << "Ciudad de destino no válida." << endl;
-            return;
+        cout << "Ciudad de destino no válida." << endl;
+        return;
         }
 
-        Ciudad& ciudad_destino_obj = mapaCiudades[ciudad_destino];
+        // Proceed with accessing the city object
+        ciudad_destino_obj = mapaCiudades[ciudad_destino];
+
 
         // Obtener la lista de guardianes locales en la ciudad de destino
         vector<Guardian>& guardianes_locales = ciudad_destino_obj.guardianesLocales;
